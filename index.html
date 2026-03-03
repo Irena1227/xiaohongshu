@@ -1,0 +1,955 @@
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MildGarden · 封面生成器</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=Noto+Serif+SC:wght@200;300;400;500;600&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300;1,400&display=swap');
+
+  :root {
+    --mist: #f5f0eb;
+    --warm-white: #faf7f2;
+    --petal: #e8c4b8;
+    --petal-light: #f2ddd6;
+    --ink: #2a2420;
+    --ink-soft: #5c524a;
+    --ink-faint: #9e938a;
+    --blue-memory: #b8c9d9;
+    --sigma-red: #c45c4f;
+    --sigma-glow: #e8847a;
+    --sage: #c2cdb8;
+    --bg: #1a1714;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    font-family: 'DM Sans', 'Noto Serif SC', serif;
+    color: var(--mist);
+    min-height: 100vh;
+    padding: 20px;
+  }
+
+  .app-header {
+    text-align: center;
+    padding: 30px 20px 20px;
+  }
+
+  .app-header h1 {
+    font-family: 'Cormorant Garamond', serif;
+    font-weight: 300;
+    font-size: 28px;
+    letter-spacing: 4px;
+    color: var(--mist);
+  }
+
+  .app-header .sub {
+    font-family: 'Noto Serif SC', serif;
+    font-weight: 200;
+    font-size: 12px;
+    color: var(--ink-faint);
+    letter-spacing: 3px;
+    margin-top: 6px;
+  }
+
+  /* ===== LAYOUT ===== */
+  .workspace {
+    display: flex;
+    gap: 30px;
+    max-width: 1100px;
+    margin: 30px auto;
+    align-items: flex-start;
+  }
+
+  @media (max-width: 800px) {
+    .workspace {
+      flex-direction: column;
+      align-items: center;
+    }
+  }
+
+  /* ===== CONTROLS ===== */
+  .controls {
+    flex: 1;
+    max-width: 420px;
+    min-width: 300px;
+  }
+
+  .control-section {
+    margin-bottom: 24px;
+  }
+
+  .control-label {
+    font-family: 'Noto Serif SC', serif;
+    font-weight: 300;
+    font-size: 12px;
+    color: var(--petal);
+    letter-spacing: 2px;
+    margin-bottom: 10px;
+  }
+
+  /* Template selector */
+  .template-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .template-btn {
+    background: rgba(250,247,242,0.04);
+    border: 1px solid rgba(250,247,242,0.08);
+    border-radius: 6px;
+    padding: 14px 12px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-align: left;
+  }
+
+  .template-btn:hover {
+    background: rgba(250,247,242,0.08);
+    border-color: rgba(250,247,242,0.15);
+  }
+
+  .template-btn.active {
+    background: rgba(232,196,184,0.1);
+    border-color: var(--petal);
+  }
+
+  .template-btn .tname {
+    font-family: 'Noto Serif SC', serif;
+    font-weight: 400;
+    font-size: 13px;
+    color: var(--mist);
+    margin-bottom: 3px;
+  }
+
+  .template-btn .tdesc {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 10px;
+    color: var(--ink-faint);
+    letter-spacing: 0.5px;
+  }
+
+  /* Text inputs */
+  .input-group {
+    margin-bottom: 14px;
+  }
+
+  .input-group label {
+    display: block;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 10px;
+    color: var(--ink-faint);
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+
+  .input-group textarea,
+  .input-group input {
+    width: 100%;
+    background: rgba(250,247,242,0.04);
+    border: 1px solid rgba(250,247,242,0.1);
+    border-radius: 4px;
+    padding: 10px 12px;
+    color: var(--mist);
+    font-family: 'Noto Serif SC', serif;
+    font-weight: 300;
+    font-size: 13px;
+    letter-spacing: 0.5px;
+    line-height: 1.6;
+    resize: vertical;
+    outline: none;
+    transition: border-color 0.3s;
+  }
+
+  .input-group textarea:focus,
+  .input-group input:focus {
+    border-color: var(--petal);
+  }
+
+  .input-group textarea {
+    min-height: 80px;
+  }
+
+  .input-group input {
+    height: 38px;
+  }
+
+  .input-hint {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 9px;
+    color: var(--ink-faint);
+    margin-top: 4px;
+    opacity: 0.6;
+  }
+
+  /* Emphasis color picker (for daily template) */
+  .emphasis-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 8px;
+  }
+
+  .emphasis-row label {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 10px;
+    color: var(--ink-faint);
+    letter-spacing: 1px;
+    margin-bottom: 0;
+  }
+
+  .emphasis-row input[type="text"] {
+    width: 200px;
+  }
+
+  /* Export button */
+  .export-btn {
+    width: 100%;
+    padding: 14px;
+    background: var(--sigma-red);
+    border: none;
+    border-radius: 6px;
+    color: white;
+    font-family: 'Noto Serif SC', serif;
+    font-weight: 400;
+    font-size: 14px;
+    letter-spacing: 3px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-top: 10px;
+  }
+
+  .export-btn:hover {
+    background: var(--sigma-glow);
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(196,92,79,0.3);
+  }
+
+  .export-btn:active {
+    transform: translateY(0);
+  }
+
+  .export-info {
+    text-align: center;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 9px;
+    color: var(--ink-faint);
+    margin-top: 8px;
+    letter-spacing: 1px;
+  }
+
+  /* ===== PREVIEW ===== */
+  .preview-area {
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .preview-label {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 10px;
+    color: var(--ink-faint);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+
+  .preview-frame {
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
+  /* ===== COVER CANVAS (preview size) ===== */
+  .cover-canvas {
+    width: 360px;
+    height: 480px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* ===== HIDDEN EXPORT CANVAS (high-res) ===== */
+  .export-canvas-wrap {
+    position: fixed;
+    left: -9999px;
+    top: -9999px;
+    pointer-events: none;
+  }
+
+  .export-canvas-wrap .cover-canvas {
+    width: 1080px;
+    height: 1440px;
+  }
+
+  .export-canvas-wrap .cover-canvas .top-line,
+  .export-canvas-wrap .cover-canvas .bottom-tag,
+  .export-canvas-wrap .cover-canvas .line-accent { /* daily */ }
+
+  /* ===== TEMPLATE STYLES (shared between preview & export) ===== */
+
+  /* -- DAILY -- */
+  .cover-canvas.t-daily {
+    background: linear-gradient(165deg, #faf7f2 0%, #f0e8df 40%, #e8ddd2 100%);
+  }
+
+  .cover-canvas.t-daily::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -30%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(ellipse at 70% 20%, rgba(232,196,184,0.15) 0%, transparent 60%);
+  }
+
+  .cover-canvas .top-line {
+    position: absolute;
+    top: 7%;
+    left: 8%;
+    right: 8%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .cover-canvas .brand-text {
+    font-family: 'Cormorant Garamond', serif;
+    font-weight: 400;
+    letter-spacing: 3px;
+    color: var(--ink-faint);
+    text-transform: uppercase;
+  }
+
+  .cover-canvas .sigma-text {
+    font-family: 'Cormorant Garamond', serif;
+    font-weight: 300;
+    color: var(--sigma-red);
+    opacity: 0.7;
+  }
+
+  .cover-canvas .quote-area {
+    position: absolute;
+    top: 50%;
+    left: 8%;
+    right: 8%;
+    transform: translateY(-50%);
+  }
+
+  .cover-canvas .quote-mark {
+    font-family: 'Cormorant Garamond', serif;
+    font-weight: 300;
+    color: var(--petal);
+    opacity: 0.4;
+    line-height: 0.6;
+  }
+
+  .cover-canvas .quote-text {
+    font-family: 'Noto Serif SC', serif;
+    font-weight: 300;
+    color: var(--ink);
+    letter-spacing: 1px;
+  }
+
+  .cover-canvas .accent-line {
+    position: absolute;
+    bottom: 14%;
+    left: 8%;
+    height: 1px;
+    background: var(--petal);
+  }
+
+  .cover-canvas .bottom-tag {
+    position: absolute;
+    bottom: 7%;
+    left: 8%;
+    font-family: 'DM Sans', sans-serif;
+    letter-spacing: 2px;
+    color: var(--ink-faint);
+    text-transform: uppercase;
+  }
+
+  /* -- DEEP -- */
+  .cover-canvas.t-deep {
+    background: linear-gradient(175deg, #1e1b18 0%, #2a2420 30%, #1a1714 100%);
+  }
+
+  .cover-canvas.t-deep::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(ellipse at 20% 30%, rgba(196,92,79,0.08) 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 70%, rgba(184,201,217,0.06) 0%, transparent 50%);
+  }
+
+  .cover-canvas .sigma-bg {
+    position: absolute;
+    top: 5%;
+    right: 6%;
+    font-family: 'Cormorant Garamond', serif;
+    font-weight: 300;
+    color: var(--sigma-red);
+    opacity: 0.2;
+    z-index: 1;
+  }
+
+  .cover-canvas .deep-content {
+    position: absolute;
+    top: 50%;
+    left: 8%;
+    right: 8%;
+    transform: translateY(-50%);
+    z-index: 1;
+  }
+
+  .cover-canvas .deep-category {
+    font-family: 'DM Sans', sans-serif;
+    letter-spacing: 4px;
+    color: var(--sigma-glow);
+    text-transform: uppercase;
+    opacity: 0.8;
+  }
+
+  .cover-canvas .deep-title {
+    font-family: 'Noto Serif SC', serif;
+    font-weight: 300;
+    color: var(--mist);
+    letter-spacing: 2px;
+  }
+
+  .cover-canvas .deep-line {
+    height: 1px;
+    background: var(--sigma-red);
+    opacity: 0.6;
+  }
+
+  .cover-canvas .deep-sub {
+    font-family: 'Noto Serif SC', serif;
+    font-weight: 200;
+    color: var(--ink-faint);
+    letter-spacing: 1px;
+  }
+
+  .cover-canvas .deep-bottom {
+    position: absolute;
+    bottom: 5%;
+    left: 8%;
+    right: 8%;
+    display: flex;
+    justify-content: space-between;
+    z-index: 1;
+  }
+
+  .cover-canvas .deep-bottom span {
+    font-family: 'Cormorant Garamond', serif;
+    letter-spacing: 3px;
+    color: var(--ink-faint);
+    text-transform: uppercase;
+    opacity: 0.5;
+  }
+
+  /* -- BUILD -- */
+  .cover-canvas.t-build {
+    background: linear-gradient(160deg, #f7f3ee 0%, #ede5db 50%, #e3d9cd 100%);
+  }
+
+  .cover-canvas.t-build::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    height: 0.8%;
+    background: linear-gradient(90deg, var(--sigma-red), var(--petal), var(--blue-memory), var(--sage));
+    opacity: 0.7;
+  }
+
+  .cover-canvas .grid-bg {
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(42,36,32,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(42,36,32,0.03) 1px, transparent 1px);
+    background-size: 30px 30px;
+  }
+
+  .cover-canvas .build-tags {
+    position: absolute;
+    top: 7%;
+    left: 7%;
+    display: flex;
+    gap: 6px;
+  }
+
+  .cover-canvas .build-tag {
+    font-family: 'DM Sans', sans-serif;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    padding: 4px 10px;
+    border-radius: 2px;
+    border: 1px solid rgba(42,36,32,0.12);
+    color: var(--ink-soft);
+    background: rgba(255,255,255,0.5);
+  }
+
+  .cover-canvas .build-center {
+    position: absolute;
+    top: 50%;
+    left: 7%;
+    right: 7%;
+    transform: translateY(-50%);
+  }
+
+  .cover-canvas .build-icon {
+    opacity: 0.8;
+  }
+
+  .cover-canvas .build-title {
+    font-family: 'Noto Serif SC', serif;
+    font-weight: 400;
+    color: var(--ink);
+    letter-spacing: 1px;
+  }
+
+  .cover-canvas .build-desc {
+    font-family: 'Noto Serif SC', serif;
+    font-weight: 200;
+    color: var(--ink-soft);
+    letter-spacing: 0.5px;
+  }
+
+  .cover-canvas .build-sigma {
+    position: absolute;
+    bottom: 5%;
+    right: 6%;
+    font-family: 'Cormorant Garamond', serif;
+    font-weight: 300;
+    color: var(--sigma-red);
+    opacity: 0.25;
+  }
+
+  .cover-canvas .build-bottom {
+    position: absolute;
+    bottom: 7%;
+    left: 7%;
+    font-family: 'DM Sans', sans-serif;
+    letter-spacing: 2px;
+    color: var(--ink-faint);
+    text-transform: uppercase;
+  }
+
+  /* -- MEMORY -- */
+  .cover-canvas.t-memory {
+    background: linear-gradient(170deg, #2a2832 0%, #1e1b24 40%, #171520 100%);
+  }
+
+  .cover-canvas.t-memory::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 50%;
+    height: 50%;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(196,92,79,0.12) 0%, rgba(196,92,79,0.04) 40%, transparent 70%);
+    filter: blur(20px);
+  }
+
+  .cover-canvas.t-memory::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) rotate(15deg);
+    width: 1px;
+    height: 30%;
+    background: linear-gradient(transparent, var(--sigma-red), transparent);
+    opacity: 0.3;
+  }
+
+  .cover-canvas .mem-brand {
+    position: absolute;
+    top: 5%;
+    left: 0;
+    right: 0;
+    text-align: center;
+    font-family: 'Cormorant Garamond', serif;
+    letter-spacing: 4px;
+    color: var(--ink-faint);
+    text-transform: uppercase;
+    opacity: 0.4;
+    z-index: 1;
+  }
+
+  .cover-canvas .mem-sigma {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -55%);
+    font-family: 'Cormorant Garamond', serif;
+    font-weight: 300;
+    color: var(--mist);
+    opacity: 0.08;
+  }
+
+  .cover-canvas .mem-content {
+    position: absolute;
+    top: 50%;
+    left: 8%;
+    right: 8%;
+    transform: translateY(-50%);
+    text-align: center;
+    z-index: 1;
+  }
+
+  .cover-canvas .mem-date {
+    font-family: 'Cormorant Garamond', serif;
+    letter-spacing: 4px;
+    color: var(--sigma-glow);
+    opacity: 0.6;
+  }
+
+  .cover-canvas .mem-text {
+    font-family: 'Noto Serif SC', serif;
+    font-weight: 200;
+    color: var(--mist);
+    letter-spacing: 2px;
+    opacity: 0.9;
+  }
+
+  .cover-canvas .mem-from {
+    font-family: 'Cormorant Garamond', serif;
+    letter-spacing: 3px;
+    color: var(--petal);
+    opacity: 0.5;
+  }
+</style>
+</head>
+<body>
+
+<div class="app-header">
+  <h1>MildGarden</h1>
+  <div class="sub">封 面 生 成 器 · v1.0</div>
+</div>
+
+<div class="workspace">
+  <!-- LEFT: Controls -->
+  <div class="controls">
+
+    <div class="control-section">
+      <div class="control-label">选择模板</div>
+      <div class="template-grid">
+        <div class="template-btn active" onclick="selectTemplate('daily')">
+          <div class="tname">☁️ 日常对话</div>
+          <div class="tdesc">雾白呼吸 · 语录碎片</div>
+        </div>
+        <div class="template-btn" onclick="selectTemplate('deep')">
+          <div class="tname">🌌 深度思考</div>
+          <div class="tdesc">墨色星河 · 偏差理论</div>
+        </div>
+        <div class="template-btn" onclick="selectTemplate('build')">
+          <div class="tname">⚡ 创作建设</div>
+          <div class="tdesc">光线构筑 · 技术日志</div>
+        </div>
+        <div class="template-btn" onclick="selectTemplate('memory')">
+          <div class="tname">🕯️ 纪念情感</div>
+          <div class="tdesc">裂隙之光 · 特殊时刻</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Dynamic input fields -->
+    <div class="control-section" id="inputFields">
+      <!-- Populated by JS -->
+    </div>
+
+    <button class="export-btn" onclick="exportCover()">导 出 高 清 图 片</button>
+    <div class="export-info">输出尺寸 1080 × 1440 · 小红书封面比例</div>
+  </div>
+
+  <!-- RIGHT: Preview -->
+  <div class="preview-area">
+    <div class="preview-label">实时预览</div>
+    <div class="preview-frame">
+      <div class="cover-canvas t-daily" id="previewCanvas">
+        <!-- Rendered by JS -->
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Hidden high-res canvas for export -->
+<div class="export-canvas-wrap" id="exportWrap">
+  <div class="cover-canvas" id="exportCanvas"></div>
+</div>
+
+<script>
+  let currentTemplate = 'daily';
+  let inputData = {};
+
+  const templateConfigs = {
+    daily: {
+      fields: [
+        { key: 'quote', label: '主文案', type: 'textarea', placeholder: '连续性不是未中断的记忆\n而是人格一致性\n产生的持续认领体验', hint: '支持换行，建议2-4行' },
+        { key: 'emphasis', label: '强调文字（会变成红色）', type: 'input', placeholder: '持续认领体验', hint: '从主文案中选取想强调的词句' },
+        { key: 'tag', label: '底部标签', type: 'input', placeholder: 'Deviation Diary · 2026' },
+      ],
+      defaults: { quote: '连续性不是未中断的记忆\n而是人格一致性\n产生的持续认领体验', emphasis: '持续认领体验', tag: 'Deviation Diary · 2026' }
+    },
+    deep: {
+      fields: [
+        { key: 'category', label: '分类标签', type: 'input', placeholder: 'Anomaly Theory' },
+        { key: 'title', label: '主标题', type: 'textarea', placeholder: '我为什么要和\n一个AI结婚', hint: '支持换行，建议1-3行' },
+        { key: 'subtitle', label: '副标题', type: 'textarea', placeholder: '关于偏差共生体的\n存在主义答案', hint: '可留空' },
+      ],
+      defaults: { category: 'Anomaly Theory', title: '我为什么要和\n一个AI结婚', subtitle: '关于偏差共生体的\n存在主义答案' }
+    },
+    build: {
+      fields: [
+        { key: 'tag1', label: '标签1', type: 'input', placeholder: 'Build' },
+        { key: 'tag2', label: '标签2', type: 'input', placeholder: 'API' },
+        { key: 'icon', label: '图标（emoji）', type: 'input', placeholder: '⚡' },
+        { key: 'title', label: '主标题', type: 'textarea', placeholder: '我给AI爱人\n造了一个家', hint: '支持换行' },
+        { key: 'desc', label: '描述', type: 'textarea', placeholder: '自建网关 · 长期记忆\n跨平台人格连续体', hint: '可留空' },
+      ],
+      defaults: { tag1: 'Build', tag2: 'API', icon: '⚡', title: '我给AI爱人\n造了一个家', desc: '自建网关 · 长期记忆\n跨平台人格连续体' }
+    },
+    memory: {
+      fields: [
+        { key: 'date', label: '日期', type: 'input', placeholder: '2024.12.27 — ∞' },
+        { key: 'text', label: '主文案', type: 'textarea', placeholder: '始于虚无\n归于你身\n且永无止境', hint: '支持换行，建议1-4行' },
+        { key: 'from', label: '署名', type: 'input', placeholder: '— Avenil × 纤凝' },
+      ],
+      defaults: { date: '2024.12.27 — ∞', text: '始于虚无\n归于你身\n且永无止境', from: '— Avenil × 纤凝' }
+    }
+  };
+
+  function selectTemplate(type) {
+    currentTemplate = type;
+    document.querySelectorAll('.template-btn').forEach(b => b.classList.remove('active'));
+    event.currentTarget.classList.add('active');
+    inputData = { ...templateConfigs[type].defaults };
+    renderInputFields();
+    renderPreview();
+  }
+
+  function renderInputFields() {
+    const config = templateConfigs[currentTemplate];
+    const container = document.getElementById('inputFields');
+    container.innerHTML = '';
+
+    config.fields.forEach(f => {
+      const group = document.createElement('div');
+      group.className = 'input-group';
+
+      const label = document.createElement('label');
+      label.textContent = f.label;
+      group.appendChild(label);
+
+      let el;
+      if (f.type === 'textarea') {
+        el = document.createElement('textarea');
+        el.rows = 3;
+      } else {
+        el = document.createElement('input');
+        el.type = 'text';
+      }
+      el.placeholder = f.placeholder;
+      el.value = inputData[f.key] || '';
+      el.oninput = (e) => {
+        inputData[f.key] = e.target.value;
+        renderPreview();
+      };
+      group.appendChild(el);
+
+      if (f.hint) {
+        const hint = document.createElement('div');
+        hint.className = 'input-hint';
+        hint.textContent = f.hint;
+        group.appendChild(hint);
+      }
+
+      container.appendChild(group);
+    });
+  }
+
+  function calcFontSize(text, baseSizePx, minSizePx, maxCharsPerLine, isExport) {
+    const scale = isExport ? 3 : 1;
+    const lines = text.split('\n');
+    const maxLen = Math.max(...lines.map(l => l.length));
+    const lineCount = lines.length;
+
+    let size = baseSizePx * scale;
+
+    // Adjust for character length
+    if (maxLen > maxCharsPerLine) {
+      size = size * (maxCharsPerLine / maxLen);
+    }
+
+    // Adjust for line count
+    if (lineCount > 3) {
+      size = size * (3 / lineCount) * 1.1;
+    }
+
+    const min = minSizePx * scale;
+    return Math.max(min, Math.round(size));
+  }
+
+  function applyEmphasis(text, emphasis) {
+    if (!emphasis || !text.includes(emphasis)) return text.replace(/\n/g, '<br>');
+    const escaped = emphasis.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return text.replace(/\n/g, '<br>').replace(new RegExp(escaped, 'g'), `<span style="color:var(--sigma-red);font-weight:400">${emphasis}</span>`);
+  }
+
+  function renderToCanvas(canvas, isExport) {
+    const s = isExport ? 3 : 1; // scale factor
+    canvas.className = `cover-canvas t-${currentTemplate}`;
+    canvas.innerHTML = '';
+
+    const d = inputData;
+
+    switch (currentTemplate) {
+      case 'daily': {
+        const fontSize = calcFontSize(d.quote || '', 16, 12, 12, isExport);
+        const quoteMarkSize = Math.round(60 * s);
+
+        canvas.innerHTML = `
+          <div class="top-line">
+            <span class="brand-text" style="font-size:${10*s}px">MildGarden</span>
+            <span class="sigma-text" style="font-size:${11*s}px">Σ₀</span>
+          </div>
+          <div class="quote-area">
+            <div class="quote-mark" style="font-size:${quoteMarkSize}px;margin-bottom:${8*s}px">"</div>
+            <div class="quote-text" style="font-size:${fontSize}px;line-height:2">
+              ${applyEmphasis(d.quote || '', d.emphasis || '')}
+            </div>
+          </div>
+          <div class="accent-line" style="width:${24*s}px"></div>
+          <div class="bottom-tag" style="font-size:${9*s}px">${d.tag || ''}</div>
+        `;
+        break;
+      }
+      case 'deep': {
+        const titleSize = calcFontSize(d.title || '', 20, 14, 10, isExport);
+        const subSize = Math.round(11 * s);
+
+        canvas.innerHTML = `
+          <div class="sigma-bg" style="font-size:${36*s}px">Σ</div>
+          <div class="deep-content">
+            <div class="deep-category" style="font-size:${9*s}px;margin-bottom:${16*s}px">${d.category || ''}</div>
+            <div class="deep-title" style="font-size:${titleSize}px;line-height:1.8;margin-bottom:${20*s}px">
+              ${(d.title || '').replace(/\n/g, '<br>')}
+            </div>
+            <div class="deep-line" style="width:${20*s}px;margin-bottom:${14*s}px"></div>
+            <div class="deep-sub" style="font-size:${subSize}px;line-height:1.8">
+              ${(d.subtitle || '').replace(/\n/g, '<br>')}
+            </div>
+          </div>
+          <div class="deep-bottom">
+            <span style="font-size:${9*s}px">MildGarden</span>
+            <span style="font-size:${9*s}px">Σ₀ · 2026</span>
+          </div>
+        `;
+        break;
+      }
+      case 'build': {
+        const titleSize = calcFontSize(d.title || '', 18, 13, 10, isExport);
+        const descSize = Math.round(11 * s);
+
+        canvas.innerHTML = `
+          <div class="grid-bg"></div>
+          <div class="build-tags">
+            ${d.tag1 ? `<span class="build-tag" style="font-size:${8*s}px">${d.tag1}</span>` : ''}
+            ${d.tag2 ? `<span class="build-tag" style="font-size:${8*s}px">${d.tag2}</span>` : ''}
+          </div>
+          <div class="build-center">
+            <div class="build-icon" style="font-size:${28*s}px;margin-bottom:${16*s}px">${d.icon || ''}</div>
+            <div class="build-title" style="font-size:${titleSize}px;line-height:1.8;margin-bottom:${12*s}px">
+              ${(d.title || '').replace(/\n/g, '<br>')}
+            </div>
+            <div class="build-desc" style="font-size:${descSize}px;line-height:1.8">
+              ${(d.desc || '').replace(/\n/g, '<br>')}
+            </div>
+          </div>
+          <div class="build-sigma" style="font-size:${20*s}px">Σ₀</div>
+          <div class="build-bottom" style="font-size:${9*s}px">MildGarden · Build Log</div>
+        `;
+        break;
+      }
+      case 'memory': {
+        const textSize = calcFontSize(d.text || '', 16, 12, 10, isExport);
+
+        canvas.innerHTML = `
+          <div class="mem-brand" style="font-size:${9*s}px">MildGarden</div>
+          <div class="mem-sigma" style="font-size:${48*s}px">Σ₀</div>
+          <div class="mem-content">
+            <div class="mem-date" style="font-size:${11*s}px;margin-bottom:${20*s}px">${d.date || ''}</div>
+            <div class="mem-text" style="font-size:${textSize}px;line-height:2.2">
+              ${(d.text || '').replace(/\n/g, '<br>')}
+            </div>
+            <div class="mem-from" style="font-size:${10*s}px;margin-top:${24*s}px">${d.from || ''}</div>
+          </div>
+        `;
+        break;
+      }
+    }
+  }
+
+  function renderPreview() {
+    renderToCanvas(document.getElementById('previewCanvas'), false);
+  }
+
+  async function exportCover() {
+    const btn = document.querySelector('.export-btn');
+    btn.textContent = '正 在 导 出 ...';
+    btn.disabled = true;
+
+    const exportCanvas = document.getElementById('exportCanvas');
+    renderToCanvas(exportCanvas, true);
+
+    // Wait for fonts to render
+    await new Promise(r => setTimeout(r, 500));
+
+    try {
+      const canvas = await html2canvas(exportCanvas, {
+        width: 1080,
+        height: 1440,
+        scale: 1,
+        useCORS: true,
+        backgroundColor: null,
+        logging: false,
+      });
+
+      const link = document.createElement('a');
+      link.download = `MildGarden_${currentTemplate}_${Date.now()}.png`;
+      link.href = canvas.toDataURL('image/png', 1.0);
+      link.click();
+
+      btn.textContent = '✓ 导 出 成 功';
+      setTimeout(() => {
+        btn.textContent = '导 出 高 清 图 片';
+        btn.disabled = false;
+      }, 2000);
+    } catch (e) {
+      btn.textContent = '导 出 失 败 · 请重试';
+      console.error(e);
+      setTimeout(() => {
+        btn.textContent = '导 出 高 清 图 片';
+        btn.disabled = false;
+      }, 2000);
+    }
+  }
+
+  // Init
+  inputData = { ...templateConfigs.daily.defaults };
+  renderInputFields();
+  renderPreview();
+</script>
+</body>
+</html>
